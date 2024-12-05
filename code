@@ -1,0 +1,269 @@
+import pandas as pd
+import numpy as np
+import warnings
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder, OneHotEncoder
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import classification_report, accuracy_score
+from sklearn.pipeline import Pipeline
+from sklearn.compose import ColumnTransformer
+from sklearn.impute import SimpleImputer
+import matplotlib.pyplot as plt
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, precision_score, recall_score
+
+# Suppress warnings
+warnings.filterwarnings("ignore")
+
+# Load the dataset (CSV file)
+file_path = '/Users/norahmo/Desktop/بیانات_النتائج_المعدلة.csv'
+data = pd.read_csv(file_path)
+print("Dataset loaded successfully.")
+
+# Clean the dataset
+# Remove duplicates
+data_cleaned = data.drop_duplicates()
+
+# Drop rows with missing values
+data_cleaned = data_cleaned.dropna()
+
+# Handling outliers using IQR method
+def remove_outliers_iqr(df, column_name):
+    Q1 = df[column_name].quantile(0.25)
+    Q3 = df[column_name].quantile(0.75)
+    IQR = Q3 - Q1
+    lower_bound = Q1 - 1.5 * IQR
+    upper_bound = Q3 + 1.5 * IQR
+    filtered_df = df[(df[column_name] >= lower_bound) & (df[column_name] <= upper_bound)]
+    return filtered_df
+
+numerical_columns = data_cleaned.select_dtypes(include=['float64', 'int64']).columns
+for column in numerical_columns:
+    data_cleaned = remove_outliers_iqr(data_cleaned, column)
+
+# Save the cleaned dataset
+cleaned_file_path = '/Users/norahmo/Desktop/cleaned_بیانات_النتائج_المعدلة.csv'
+data_cleaned.to_csv(cleaned_file_path, index=False)
+print(f"Cleaned dataset saved at: {cleaned_file_path}")
+
+# Preprocessing and modeling
+# Model 1: Logistic Regression for 'type'
+features_model1 = ['release_year', 'rating', 'duration_minutes', 'listed_in']
+target_model1 = 'type'
+
+# Model 2: Random Forest for 'rating'
+features_model2 = ['release_year', 'duration_minutes', 'listed_in']
+target_model2 = 'rating'
+
+categorical_features_model1 = ['rating', 'listed_in']
+categorical_features_model2 = ['listed_in']
+
+preprocessor_model1 = ColumnTransformer(
+    transformers=[
+        ('num', SimpleImputer(strategy='median'), ['release_year', 'duration_minutes']),
+        ('cat', OneHotEncoder(handle_unknown='ignore'), categorical_features_model1)
+    ]
+)
+
+preprocessor_model2 = ColumnTransformer(
+    transformers=[
+        ('num', SimpleImputer(strategy='median'), ['release_year', 'duration_minutes']),
+        ('cat', OneHotEncoder(handle_unknown='ignore'), categorical_features_model2)
+    ]
+)
+
+X_model1 = data[features_model1]
+y_model1 = LabelEncoder().fit_transform(data[target_model1])
+
+X_train_m1, X_test_m1, y_train_m1, y_test_m1 = train_test_split(X_model1, y_model1, test_size=0.2, random_state=42)
+
+pipeline_model1 = Pipeline([
+    ('preprocessor', preprocessor_model1),
+    ('classifier', LogisticRegression(max_iter=1000))
+])
+
+pipeline_model1.fit(X_train_m1, y_train_m1)
+y_pred_m1 = pipeline_model1.predict(X_test_m1)
+
+# Confusion matrix for Model 1
+conf_matrix = confusion_matrix(y_test_m1, y_pred_m1)
+disp = ConfusionMatrixDisplay(confusion_matrix=conf_matrix)
+disp.plot(cmap='Blues', values_format='d')
+plt.title('Confusion Matrix for Model 1')
+plt.show()
+
+# Print evaluation metrics for Model 1
+accuracy_m1 = accuracy_score(y_test_m1, y_pred_m1)
+precision_m1 = precision_score(y_test_m1, y_pred_m1, average='weighted')
+recall_m1 = recall_score(y_test_m1, y_pred_m1, average='weighted')
+
+print(f"Model 1 - Accuracy: {accuracy_m1:.4f}, Precision: {precision_m1:.4f}, Recall: {recall_m1:.4f}")
+
+import pandas as pd
+
+# Load the dataset (CSV file)
+file_path = '/Users/norahmo/Desktop/بیانات_النتائج_المعدلة.csv'
+data = pd.read_csv(file_path)
+
+print("Dataset loaded successfully.")
+
+# Check for duplicates before cleaning
+duplicates_before = data.duplicated().sum()
+print(f"Total duplicates before cleaning: {duplicates_before}")
+
+# Check for missing (null) values before cleaning
+missing_values_before = data.isnull().sum().sum()
+print(f"Missing values before cleaning: {missing_values_before}")
+
+# Remove duplicate rows
+data_cleaned = data.drop_duplicates()
+print(f"Duplicates removed. Current shape: {data_cleaned.shape}")
+
+# Drop rows with any missing values (if any)
+data_cleaned = data_cleaned.dropna()
+print(f"Missing values removed. Current shape: {data_cleaned.shape}")
+
+# Check for duplicates and missing values after cleaning
+duplicates_after = data_cleaned.duplicated().sum()
+missing_values_after = data_cleaned.isnull().sum().sum()
+print(f"Total duplicates after cleaning: {duplicates_after}")
+print(f"Missing values after cleaning: {missing_values_after}")
+
+# Method to handle outliers using the Interquartile Range (IQR) method
+def remove_outliers_iqr(df, column_name):
+    Q1 = df[column_name].quantile(0.25)  # First quartile (25%)
+    Q3 = df[column_name].quantile(0.75)  # Third quartile (75%)
+    IQR = Q3 - Q1  # Interquartile range
+    lower_bound = Q1 - 1.5 * IQR  # Lower bound
+    upper_bound = Q3 + 1.5 * IQR  # Upper bound
+    filtered_df = df[(df[column_name] >= lower_bound) & (df[column_name] <= upper_bound)]
+    print(f"Outliers removed from column '{column_name}'. Rows removed: {len(df) - len(filtered_df)}")
+    return filtered_df
+
+# Apply the outlier removal method for numerical columns
+numerical_columns = data_cleaned.select_dtypes(include=['float64', 'int64']).columns
+print(f"Numerical columns detected for outlier removal: {list(numerical_columns)}")
+
+for column in numerical_columns:
+    data_cleaned = remove_outliers_iqr(data_cleaned, column)
+
+# Check dataset statistics after outlier removal
+print(f"Shape of dataset after outlier removal: {data_cleaned.shape}")
+
+# Verify that the dataset is clean
+if duplicates_after == 0 and missing_values_after == 0:
+    print("Dataset is clean. No duplicates or missing values remain.")
+else:
+    print("Some issues remain after cleaning.")
+
+# Save the cleaned dataset (to a CSV file)
+cleaned_file_path = '/Users/norahmo/Desktop/cleaned_بیانات_النتائج_المعدلة.csv'
+data_cleaned.to_csv(cleaned_file_path, index=False)
+
+# Print the cleaned file path
+print(f"Cleaned dataset saved at: {cleaned_file_path}")
+
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder, OneHotEncoder
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import classification_report, accuracy_score
+from sklearn.pipeline import Pipeline
+from sklearn.compose import ColumnTransformer
+from sklearn.impute import SimpleImputer
+import numpy as np
+import warnings
+
+# Suppress warnings
+warnings.filterwarnings("ignore")
+
+# Load dataset
+file_path = '/Users/norahmo/Desktop/cleaned_بیانات_النتائج_المعدلة.csv'
+try:
+    data = pd.read_csv(file_path)
+except FileNotFoundError:
+    print(f"File not found at {file_path}")
+
+# Quick inspection
+print("Dataset Head:\n", data.head())
+print("\nDataset Info:\n")
+print(data.info())
+
+# Handling missing or inconsistent values
+data['duration'] = data['duration'].fillna("0 min")  # Fill missing durations with "0 min"
+data['duration_minutes'] = data['duration'].str.extract(r'(\d+)', expand=False).astype(float).fillna(0)  # Extract numeric duration
+data['rating'] = data['rating'].fillna("Unknown")  # Fill missing ratings with "Unknown"
+data = data.dropna(subset=['type', 'release_year', 'listed_in'])  # Drop rows with critical missing values
+
+# Model 1: Predict 'type' (Movie or TV Show)
+features_model1 = ['release_year', 'rating', 'duration_minutes', 'listed_in']
+target_model1 = 'type'
+
+# Model 2: Predict 'rating'
+features_model2 = ['release_year', 'duration_minutes', 'listed_in']
+target_model2 = 'rating'
+
+# Define categorical features for encoding
+categorical_features_model1 = ['rating', 'listed_in']
+categorical_features_model2 = ['listed_in']
+
+# Preprocessing pipeline for Model 1
+preprocessor_model1 = ColumnTransformer(
+    transformers=[
+        ('num', SimpleImputer(strategy='median'), ['release_year', 'duration_minutes']),
+        ('cat', OneHotEncoder(handle_unknown='ignore'), categorical_features_model1)
+    ]
+)
+
+# Preprocessing pipeline for Model 2
+preprocessor_model2 = ColumnTransformer(
+    transformers=[
+        ('num', SimpleImputer(strategy='median'), ['release_year', 'duration_minutes']),
+        ('cat', OneHotEncoder(handle_unknown='ignore'), categorical_features_model2)
+    ]
+)
+
+# Splitting data for Model 1
+X_model1 = data[features_model1]
+y_model1 = LabelEncoder().fit_transform(data[target_model1])  # Encode 'Movie' and 'TV Show'
+X_train_m1, X_test_m1, y_train_m1, y_test_m1 = train_test_split(X_model1, y_model1, test_size=0.2, random_state=42)
+
+# Splitting data for Model 2
+X_model2 = data[features_model2]
+y_model2 = LabelEncoder().fit_transform(data[target_model2])  # Encode 'rating'
+X_train_m2, X_test_m2, y_train_m2, y_test_m2 = train_test_split(X_model2, y_model2, test_size=0.2, random_state=42)
+
+# Model 1: Logistic Regression Pipeline
+pipeline_model1 = Pipeline([
+    ('preprocessor', preprocessor_model1),
+    ('classifier', LogisticRegression(max_iter=1000))
+])
+
+# Model 2: Random Forest Pipeline
+pipeline_model2 = Pipeline([
+    ('preprocessor', preprocessor_model2),
+    ('classifier', RandomForestClassifier(random_state=42))
+])
+
+# Train both models
+pipeline_model1.fit(X_train_m1, y_train_m1)
+pipeline_model2.fit(X_train_m2, y_train_m2)
+
+# Predictions and evaluation
+y_pred_m1 = pipeline_model1.predict(X_test_m1)
+y_pred_m2 = pipeline_model2.predict(X_test_m2)
+
+# Classification reports
+report_model1 = classification_report(y_test_m1, y_pred_m1)
+report_model2 = classification_report(y_test_m2, y_pred_m2)
+
+# Print results
+print("Model 1: Logistic Regression (Movie vs. TV Show)")
+print(report_model1)
+print(f"Model 1 Accuracy: {accuracy_score(y_test_m1, y_pred_m1)}")
+
+print("\nModel 2: Random Forest Classifier (Predict Show Rating)")
+print(report_model2)
+print(f"Model 2 Accuracy: {accuracy_score(y_test_m2, y_pred_m2)}")
+
